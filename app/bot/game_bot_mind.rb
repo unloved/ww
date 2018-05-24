@@ -18,6 +18,8 @@ class GameBotMind
     return :update_environment if need_update_environment?
     return :eat_food if hungry?
     return :heal if need_to_heal?
+    return :move_deep_to_dungeon if waiting_in_dungeon?
+    return :move_to_dungeon if waiting_to_dungeon?
     return :return_home if need_to_return_home?
     return :craft_supersteam if need_to_craft_supersteam?
     return :move_to_newreno if need_to_move_to_newreno?
@@ -53,7 +55,7 @@ class GameBotMind
 
   def need_to_return_home?
     if store.state == :waiting_to_move
-      ((store.path > 50) and (store.hp <= 160)) or (store.path > 60)
+      ((store.path > GameBot::SOFT_LIMIT_PATH) and (store.hp <= GameBot::SOFT_LIMIT_HP)) or (store.path >= GameBot::HARD_LIMIT_PATH)
     end
   end
 
@@ -87,5 +89,13 @@ class GameBotMind
 
   def need_to_flee?
     store.state == :flee
+  end
+
+  def waiting_in_dungeon?
+    store.state == :waiting_in_dungeon
+  end
+
+  def waiting_to_dungeon?
+    store.state == :waiting_to_dungeon
   end
 end

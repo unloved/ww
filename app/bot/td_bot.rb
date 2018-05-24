@@ -3,7 +3,7 @@ require 'tdlib-ruby'
 class TdBot
   CHAT_ID = 430930191
   SENDER_USER_ID = 430930191
-  attr_accessor :state, :client
+  attr_accessor :state, :client, :last_message
 
   def self.start
     a = self.new
@@ -11,23 +11,21 @@ class TdBot
   end
 
   def start
-    self.client = client
-    set_callbacks
-    sleep(3)
-    response = gamebot.response('', [])
-    send_message(response) if response.present?
-    # while  1==1 do
-    #   action = gamebot.action
-    #   puts action
-    #   send_message action if action
-    #   sleep(5)
-    # end
-    # send_message(response) if response.present?
-    # response = gamebot.response(text, options)
-    # puts response
-    # sleep(1)
-    # send_message(response) if response.present?
-    # client
+    begin
+      self.client = client
+      set_callbacks
+      sleep(3)
+      while  1==1 do
+        if last_message.nil? or last_message < 3.minutes.ago
+          puts '<<<<<<WAKE ME UP>>>>>>>>'
+          send_message(GameBotActor::ACTIONS[:update_environment])
+        end
+        sleep(30)
+      end
+    ensure
+      client.close
+    end
+    client
   end
 
   def set_callbacks
@@ -44,15 +42,17 @@ class TdBot
     end
 
     client.on('updateNewMessage') do |update|
+      # puts update
       next unless (update['message']['chat_id'] == CHAT_ID and update['message']['sender_user_id'] == SENDER_USER_ID)
       next if update['message']['content']['@type'] == 'messagePhoto'
+      self.last_message = Time.current
       begin
         text = update['message']['content']['text']['text'].to_s
         rows = (update['message']['reply_markup'].try{|x| x['rows']} || []).flatten
         options = rows.map{|row| row['text']}
         response = gamebot.response(text, options)
-        # sleep(2)
-        send_message(response) if response.present?
+        sleep(3)
+        send_message(response, update) if response.present?
       rescue => e
         puts e
         puts update
@@ -63,8 +63,17 @@ class TdBot
   end
 
 
-  def send_message text
-    client.broadcast('@type': 'sendMessage', 'chat_id': CHAT_ID, input_message_content: {'@type': 'inputMessageText', text: {'@type': 'formattedText', text: text}})
+  def send_message text, update=nil
+    if text.is_a?(String)
+      client.broadcast('@type': 'sendMessage', 'chat_id': CHAT_ID, input_message_content: {'@type': 'inputMessageText', text: {'@type': 'formattedText', text: text}})
+    elsif text.is_a?(Symbol)
+      begin
+        data = update['message']['reply_markup']['rows'].first.first['type']['data']
+        client.broadcast_and_receive('@type' => 'getCallbackQueryAnswer', chat_id: CHAT_ID, message_id: update['message']['id'], payload: {'@type': 'callbackQueryPayloadData', data: data})
+      rescue
+        # binding.pry
+      end
+    end
   end
 
   def gamebot
@@ -74,7 +83,7 @@ class TdBot
   def client
     @client ||= begin
       TD.configure do |config|
-        config.lib_path = '/Users/unloved/www/td/build'
+        config.lib_path = GameBot::LIB_PATH
 
         config.client.api_id = '239945'
         config.client.api_hash = 'c9a8fb04fe6391782dcde86dc6fe1fc8'

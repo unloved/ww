@@ -21,6 +21,7 @@ class GameBotUpdater
     parse_used_food
     parse_received
     parse_final
+    parse_dungeon
     store
   end
 
@@ -77,11 +78,14 @@ class GameBotUpdater
       store.state = :waiting
     end
 
-    if text.include?('Ты отправился дальше') or text.include?('Ты отправился искать припасы в Пустоши.')
-      store.state = :walking
+    walking_states = ['Ты отправился дальше', 'Ты отправился искать припасы в Пустоши.', 'Ты направился на выход, обратно в этот медленно умирающий мир.']
+    walking_states.each do |ws|
+      if text.include?(ws)
+        store.state = :walking
+      end
     end
 
-    if text.include?('Ты решил вступить в схватку с противником')
+    if text.include?('Ты решил вступить в схватку с противником') or text.include?('Уйти отсюда без боя он тебе точно не даст')
       store.state = :fighting
     end
 
@@ -101,8 +105,16 @@ class GameBotUpdater
       store.state = :spent_all_caps
     end
 
+    if text.include?('Ты решил попытаться убежать')
+      store.state = :fleeing
+    end
+
     if text.include?('Ты слишком устал и не можешь идти дальше.')
       sleep(60)
+    end
+
+    if text.include?('💉++ Суперстим.')
+      store.hp = nil
     end
   end
 
@@ -150,6 +162,12 @@ class GameBotUpdater
           store.send("#{potion[:key]}=", val)
         end
       end
+    end
+  end
+
+  def parse_dungeon
+    if options.include?('Двигаться дальше') and !(store.state.nil? or store.state == :initial_pipboy)
+      store.state = :waiting_in_dungeon
     end
   end
 

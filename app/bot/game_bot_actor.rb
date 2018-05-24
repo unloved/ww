@@ -23,6 +23,8 @@ class GameBotActor
     move_to_wastelands: '👣Пустошь',
     flee: '🏃Дать деру',
     learn_hp: '❤️Живучесть',
+    learn_agility: '🤸🏽‍♂️Ловкость',
+    learn_strength: '💪Сила',
     teleport: '🔜31 км',
     waiting: nil
   }
@@ -62,6 +64,10 @@ class GameBotActor
   end
 
   def learn
-    ACTIONS[:learn_hp]
+    ACTIONS[GameBot::LEARN_SUBJECT]
+  end
+
+  def move_deep_to_dungeon
+    :move_deep_to_dungeon
   end
 end
